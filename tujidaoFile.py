@@ -9,7 +9,7 @@ import os
 import json
 import random
 import time
-import _thread
+import threading
 import socket
 http = urllib3.PoolManager()
 headers = {
@@ -27,10 +27,18 @@ headers = {
 socket.setdefaulttimeout(20)
 # 目标网站地址
 webUrl = "http://www.tujidao.com"
-altusCount = 1
-# 判断是否为真实图集
-#1.legend标签内容为“临时图集” 内容为空
-#2.legend标签内容为“图集” 内容为空
+#文件下载地址
+Path="F:\\图集岛\\"
+#继承父类threading.Thread 并重写__init__方法和 run方法
+class myThread(threading.Thread):
+    def __init__(self,begNum,endNum):
+        threading.Thread.__init__(self)
+        self.begNum = begNum
+        self.endNum = endNum
+    def run(self):
+            downAltals(self.begNum,self.endNum)
+    def __del__(self):
+             print("相册采集完成") 
 
 # 获取分类名称 
 def className(classId):
@@ -146,35 +154,59 @@ def pageAltasInfo(lihtml):
    "organUrl":webUrl+ p[0].a['href']
       }
    return altasInfo
+# 多线程函数——下载图片 
+def downAltals(begNum,endNum):
+   for num in range(begNum.endNum): 
+      res = realClassid(num)
+      if res != False:
+         #图集分类名称
+         altasClassName = className(num)
+         #图集分类文件路径
+         filePath = Path + altasClassName
+         #创建分类文件夹
+         mkdir(filePath)
+         #该分类的页面分页数量+1
+         pageCount = altasClassPageCount(num)
+         #获取该分类下所有图集信息
+         for i in range(1,pageCount):
+            pageAltasHtml(num,i)
+            pagehtml =pageAltasHtml(num,i)
+            for j in pagehtml.find_all('li'):
+               pageAltasInfo(j)
+               altasInfoJson =json.loads(str(pageAltasInfo(j)).replace('\'','"'))
+               altasName = altasInfoJson['altasName']
+               #创建分类文件夹内的图集文件夹
+               altasFilePath = filePath + "\\"+altasName.rstrip()# rstrip去除文件结尾的空格
+               mkdir(altasFilePath)
+               #下载封面
+               coverUrl = altasInfoJson['cover'] 
+               coverPath = altasFilePath+"\\"+'cover.jpg'
+               auto_down(coverUrl,coverPath)   
+               #下载整个图集
+               altasUrl =  altasInfoJson['altasUrl']
+               imgDownLoad(altasUrl,altasFilePath)     
+               print("已完成第：",str(altusCount)+"个相册", end="\r")
+               altusCount+=1
+# 程序入口
+if __name__ == '__main__':
+   beginNum = 0
+   endNum= 204
+   theardNum =50
+   Gap = int(( endNum - beginNum )/theardNum) 
+   GapRemainder = int(( endNum - beginNum )%theardNum) 
+   threads = []
+   for num in range(0,theardNum):
+      theThread = myThread(beginNum + num*Gap, beginNum + (num+1)*Gap)
+      theThread.start() 
+      threads.append(theThread)
+   if not GapRemainder == 0:
+      theThread = myThread( endNum - GapRemainder, endNum  )
+      theThread.start()
+      threads.append(theThread)
+   print('所有线程启动完毕')
+   # 等待所有线程完成
+   for t in threads:
+      t.join()
+   print ("所有任务已完成")
+  
 
-classArry = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 58, 59, 62, 63, 64, 65, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 197, 198, 199, 200, 201, 202, 203]
-Path="F:\\图集岛\\"
-for num in classArry: 
-   #图集分类名称
-   altasClassName = className(num)
-   #图集分类文件路径
-   filePath = Path + altasClassName
-   #创建分类文件夹
-   mkdir(filePath)
-   #该分类的页面分页数量+1
-   pageCount = altasClassPageCount(num)
-   #获取该分类下所有图集信息
-   for i in range(1,pageCount):
-      pageAltasHtml(num,i)
-      pagehtml =pageAltasHtml(num,i)
-      for j in pagehtml.find_all('li'):
-         pageAltasInfo(j)
-         altasInfoJson =json.loads(str(pageAltasInfo(j)).replace('\'','"'))
-         altasName = altasInfoJson['altasName']
-         #创建分类文件夹内的图集文件夹
-         altasFilePath = filePath + "\\"+altasName.rstrip()# rstrip去除文件结尾的空格
-         mkdir(altasFilePath)
-         #下载封面
-         coverUrl = altasInfoJson['cover'] 
-         coverPath = altasFilePath+"\\"+'cover.jpg'
-         auto_down(coverUrl,coverPath)   
-         #下载整个图集
-         altasUrl =  altasInfoJson['altasUrl']
-         imgDownLoad(altasUrl,altasFilePath)     
-         print("已完成第：",str(altusCount)+"个相册", end="\r")
-         altusCount+=1
